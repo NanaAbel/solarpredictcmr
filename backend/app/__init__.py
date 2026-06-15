@@ -1,0 +1,1 @@
+"""SolarPredict backend application package."""
