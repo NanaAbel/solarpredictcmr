@@ -1,0 +1,26 @@
+# Python
+__pycache__/
+*.py[cod]
+*.pyo
+.pytest_cache/
+.venv/
+venv/
+
+# Runtime database and local state
+*.db
+*.sqlite
+*.sqlite3
+
+# Frontend dependencies and generated output
+frontend/node_modules/
+frontend/.vite/
+frontend/dist/
+
+# Large comparison model artifacts.
+# The deployed XGBoost models are kept in Model/.
+Model/*_rf_model_ii.pkl
+Model/*_lstm_model_ii.pkl
+
+# OS/editor noise
+.DS_Store
+Thumbs.db
