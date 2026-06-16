@@ -57,6 +57,17 @@ def on_startup() -> None:
         get_model(city)
 
 
+@app.get("/")
+def root():
+    """Help users who open the backend URL directly in the browser."""
+    return {
+        "message": "SolarPredict API is running.",
+        "frontend": "Open http://localhost:5173 in your browser for the dashboard UI.",
+        "docs": "/docs",
+        "health": "/api/health",
+    }
+
+
 @app.get("/api/health")
 def health_check():
     """Check API status and list supported cities."""
