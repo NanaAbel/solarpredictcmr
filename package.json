@@ -1,0 +1,8 @@
+{
+  "name": "solarpredict",
+  "private": true,
+  "scripts": {
+    "build": "npm run build --prefix frontend",
+    "install:frontend": "npm install --prefix frontend"
+  }
+}
