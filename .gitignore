@@ -88,11 +88,22 @@ frontend/dist-ssr/
 */.ipynb_checkpoints/
 
 # =========================
-# Machine Learning (optional large artifacts)
+# Machine Learning — large / unused model files
+# (App only needs douala_xgb_model_ii.pkl & maroua_xgb_model_ii.pkl)
 # =========================
-# Uncomment or use if you don't want large unused models in Git:
-# Model/*_rf_model_*.pkl
-# Model/*_lstm_model_*.pkl
+# Random Forest models (~190 MB each — exceeds GitHub 100 MB limit)
+Model/douala_rf_model_ii.pkl
+Model/maroua_rf_model_ii.pkl
+Model/*_rf_model_*.pkl
+
+# LSTM models (not used by deployed app)
+Model/douala_lstm_model_ii.pkl
+Model/maroua_lstm_model_ii.pkl
+Model/*_lstm_model_*.pkl
+
+# Optional: older/best checkpoints (uncomment if you don't want these in Git)
+# Model/best_douala_xgb.pkl
+# Model/best_maroua_xgb.pkl
 # Model/best_*.pkl
 
 # ML experiment tracking
@@ -166,16 +177,6 @@ temp/
 # =========================
 docs/_build/
 site/
-
-cd C:\Users\user\OneDrive\Bureau\SolarPredict
-
-# Remove from Git index only (keeps files on disk)
-git rm -r --cached frontend/node_modules
-git rm -r --cached frontend/dist
-git rm -r --cached frontend/.vite
-git rm --cached backend/solar_predict.db
-git rm --cached Model/douala_rf_model_ii.pkl
-git rm --cached Model/maroua_rf_model_ii.pkl
 
 # Keep generated PDFs optional — uncomment to ignore:
 # docs/*.pdf
