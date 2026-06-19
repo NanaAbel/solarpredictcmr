@@ -24,18 +24,21 @@ def get_microgrid_recommendation(prediction: float) -> MicrogridRecommendation:
       - 400 <= prediction <= 700 → Moderate Solar Energy
       - prediction < 400        → Low Solar Energy
     """
+    # Strong production: prioritize solar and store excess energy.
     if prediction > 700:
         return MicrogridRecommendation(
             status="High Solar Energy",
             recommendation="Charge batteries and prioritize solar generation",
             level="high",
         )
+    # Medium production: combine solar with battery/grid support.
     if prediction >= 400:
         return MicrogridRecommendation(
             status="Moderate Solar Energy",
             recommendation="Hybrid operation mode",
             level="moderate",
         )
+    # Weak production: expect battery or grid to cover more demand.
     return MicrogridRecommendation(
         status="Low Solar Energy",
         recommendation="Use battery reserves or grid support",

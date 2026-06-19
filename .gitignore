@@ -1,26 +1,171 @@
-# Python
+# =========================
+# Python / Backend
+# =========================
 __pycache__/
 *.py[cod]
-*.pyo
-.pytest_cache/
+*$py.class
+*.so
+.Python
+build/
+develop-eggs/
+dist/
+downloads/
+eggs/
+.eggs/
+lib/
+lib64/
+parts/
+sdist/
+var/
+wheels/
+*.egg-info/
+.installed.cfg
+*.egg
+MANIFEST
+
+# Virtual environments
 .venv/
 venv/
+ENV/
+env/
+.env/
+.conda/
 
-# Runtime database and local state
+# Environment variables & secrets
+.env
+.env.*
+!.env.example
+*.pem
+*.key
+secrets/
+credentials.json
+
+# SQLite databases (runtime data)
 *.db
+*.db-journal
 *.sqlite
 *.sqlite3
 
-# Frontend dependencies and generated output
-frontend/node_modules/
-frontend/.vite/
+# Testing & coverage
+.pytest_cache/
+.coverage
+.coverage.*
+htmlcov/
+.tox/
+.nox/
+coverage.xml
+*.cover
+.hypothesis/
+
+# Type checkers & linters
+.mypy_cache/
+.ruff_cache/
+.dmypy.json
+dmypy.json
+
+# =========================
+# Node.js / Frontend
+# =========================
+node_modules/
+npm-debug.log*
+yarn-debug.log*
+yarn-error.log*
+pnpm-debug.log*
+lerna-debug.log*
+
+# Vite / React build output
 frontend/dist/
+frontend/dist-ssr/
+*.local
 
-# Large comparison model artifacts.
-# The deployed XGBoost models are kept in Model/.
-Model/*_rf_model_ii.pkl
-Model/*_lstm_model_ii.pkl
+# Package manager locks (keep package-lock.json — remove line below if you prefer ignoring it)
+# package-lock.json
 
-# OS/editor noise
-.DS_Store
+# =========================
+# Jupyter / Notebooks
+# =========================
+.ipynb_checkpoints/
+*/.ipynb_checkpoints/
+
+# =========================
+# Machine Learning (optional large artifacts)
+# =========================
+# Uncomment or use if you don't want large unused models in Git:
+# Model/*_rf_model_*.pkl
+# Model/*_lstm_model_*.pkl
+# Model/best_*.pkl
+
+# ML experiment tracking
+mlruns/
+wandb/
+tensorboard/
+lightning_logs/
+checkpoints/
+
+# =========================
+# IDE / Editors
+# =========================
+# VS Code / Cursor
+.vscode/
+!.vscode/extensions.json
+!.vscode/settings.json.example
+
+# Cursor
+.cursor/
+
+# PyCharm / JetBrains
+.idea/
+*.iml
+*.ipr
+*.iws
+
+# Sublime Text
+*.sublime-project
+*.sublime-workspace
+
+# =========================
+# OS Files
+# =========================
+# Windows
 Thumbs.db
+Thumbs.db:encryptable
+ehthumbs.db
+ehthumbs_vista.db
+Desktop.ini
+$RECYCLE.BIN/
+*.lnk
+
+# macOS
+.DS_Store
+.AppleDouble
+.LSOverride
+._*
+
+# Linux
+*~
+.directory
+
+# =========================
+# Logs & temp files
+# =========================
+*.log
+logs/
+tmp/
+temp/
+*.tmp
+*.temp
+*.swp
+*.swo
+*~
+
+# Uvicorn / server
+*.pid
+
+# =========================
+# Documentation build (if added later)
+# =========================
+docs/_build/
+site/
+
+# Keep generated PDFs optional — uncomment to ignore:
+# docs/*.pdf

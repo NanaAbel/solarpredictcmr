@@ -40,6 +40,7 @@ app = FastAPI(
     version="1.0.0",
 )
 
+# Allow the local Vite frontend to call this backend during development.
 app.add_middleware(
     CORSMiddleware,
     allow_origins=["http://localhost:5173", "http://127.0.0.1:5173"],
@@ -52,7 +53,9 @@ app.add_middleware(
 @app.on_event("startup")
 def on_startup() -> None:
     """Initialize SQLite and preload XGBoost models into memory."""
+    # Create/migrate the SQLite database before any route tries to use it.
     init_db()
+    # Preloading avoids a slow first prediction request for each city.
     for city in CITIES:
         get_model(city)
 
@@ -96,12 +99,15 @@ async def dashboard(city: str = "douala"):
     Fetches Open-Meteo data, runs XGBoost for the current hour, and returns
     the six dashboard metrics plus aggregated history stats.
     """
+    # Validate the city early so unsupported values produce a clear 400 error.
     city_key = city.lower()
     if city_key not in CITIES:
         raise HTTPException(status_code=400, detail=f"Unsupported city: {city}")
 
     try:
+        # One-hour forecast is enough for the live dashboard card.
         weather_records = await fetch_hourly_weather(city_key, 1)
+        # Convert API records into the exact dataframe expected by XGBoost.
         feature_df = build_feature_dataframe(
             [record["features"] for record in weather_records],
             MODEL_II_FEATURES,
@@ -110,6 +116,7 @@ async def dashboard(city: str = "douala"):
     except Exception as exc:
         raise HTTPException(status_code=502, detail=str(exc)) from exc
 
+    # Split the first record into display weather, advice, and saved history.
     record = weather_records[0]
     weather = record["weather"]
     advice = get_microgrid_recommendation(prediction_value)
@@ -151,11 +158,13 @@ async def dashboard(city: str = "douala"):
 @app.post("/api/predict", response_model=PredictionResponse)
 async def predict_solar(request: PredictionRequest):
     """Run hourly solar forecast, save to SQLite, attach microgrid advice."""
+    # The city comes from user input, so normalize and validate it.
     city = request.city.lower()
     if city not in CITIES:
         raise HTTPException(status_code=400, detail=f"Unsupported city: {request.city}")
 
     try:
+        # Fetch weather, build feature rows, and run model inference in batch.
         weather_records = await fetch_hourly_weather(city, request.hours)
         feature_df = build_feature_dataframe(
             [record["features"] for record in weather_records],
@@ -167,14 +176,17 @@ async def predict_solar(request: PredictionRequest):
     except Exception as exc:
         raise HTTPException(status_code=502, detail=f"Weather or prediction failed: {exc}") from exc
 
+    # Keep frontend response objects separate from database insert records.
     predictions: list[PredictionPoint] = []
     db_records = []
 
     for record, prediction_value in zip(weather_records, prediction_values):
+        # Pydantic converts and validates the weather dictionary structure.
         weather = WeatherSnapshot(**record["weather"])
         rounded = round(prediction_value, 2)
         advice = get_microgrid_recommendation(rounded)
 
+        # Response row: includes prediction, weather, and advice.
         predictions.append(
             PredictionPoint(
                 datetime=record["datetime"],
@@ -187,6 +199,7 @@ async def predict_solar(request: PredictionRequest):
                 ),
             )
         )
+        # Database row: only columns stored in SQLite.
         db_records.append(
             {
                 "temperature": weather.temperature,
@@ -210,6 +223,7 @@ async def predict_solar(request: PredictionRequest):
 @app.get("/api/history")
 def prediction_history(city: str | None = None, limit: int = 100):
     """Retrieve stored predictions, optionally filtered by city."""
+    # Optional filter is validated only when present.
     if city and city.lower() not in CITIES:
         raise HTTPException(status_code=400, detail=f"Unsupported city: {city}")
     return get_prediction_history(city=city, limit=limit)
@@ -218,6 +232,7 @@ def prediction_history(city: str | None = None, limit: int = 100):
 @app.get("/api/microgrid/recommendation")
 def microgrid_recommendation(prediction: float):
     """Return rule-based microgrid status for a given irradiance value."""
+    # This endpoint is useful for testing recommendation thresholds alone.
     advice = get_microgrid_recommendation(prediction)
     return {
         "prediction": prediction,
@@ -230,6 +245,7 @@ def microgrid_recommendation(prediction: float):
 @app.post("/api/microgrid/optimize", response_model=MicrogridResponse)
 async def optimize_microgrid(request: MicrogridRequest):
     """Run battery/grid optimization using predicted solar generation."""
+    # Pydantic validates numeric constraints; this checks city support.
     city = request.city.lower()
     if city not in CITIES:
         raise HTTPException(status_code=400, detail=f"Unsupported city: {request.city}")

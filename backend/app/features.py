@@ -40,6 +40,7 @@ def build_model_ii_row(
     Weather inputs (from Open-Meteo): T2M, RH2M, WS10M, PRECTOTCORR
     Derived automatically: cyclic time, season, rain/wind transforms
     """
+    # Extract calendar parts once so raw and derived fields stay consistent.
     hour = dt.hour
     month = dt.month
     day_of_year = int(dt.timetuple().tm_yday)
@@ -57,6 +58,7 @@ def build_model_ii_row(
         "PRECTOTCORR": float(prectotcorr),
         "WS10M": float(ws10m),
         # Cyclic time encodings (daily + yearly patterns)
+        # These show that 23:00 is close to 00:00 and Dec is close to Jan.
         "hour_sin": math.sin(2 * math.pi * hour / 24),
         "hour_cos": math.cos(2 * math.pi * hour / 24),
         "month_sin": math.sin(2 * math.pi * month / 12),
@@ -65,6 +67,7 @@ def build_model_ii_row(
         "day_cos": math.cos(2 * math.pi * day_of_year / 365),
         "day_of_year": day_of_year,
         # Binary / transformed features
+        # log1p handles skewed non-negative rain/wind values and keeps zero valid.
         "is_daytime": int(6 <= hour <= 18),
         "is_rainy": int(prectotcorr > 0),
         "rain_log1p": float(np.log1p(prectotcorr)),
@@ -76,4 +79,5 @@ def build_model_ii_row(
 
 def build_feature_dataframe(rows: list[dict], feature_names: list[str]) -> pd.DataFrame:
     """Convert a list of feature dicts into a DataFrame with correct column order."""
+    # XGBoost expects the exact same columns and order used during training.
     return pd.DataFrame(rows)[feature_names]

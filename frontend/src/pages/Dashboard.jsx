@@ -16,12 +16,14 @@ import StatCard from "../components/StatCard";
 import RecommendationBadge from "../components/RecommendationBadge";
 
 export default function Dashboard() {
+  // Page state: selected city, API response, error text, and loading flag.
   const [city, setCity] = useState("douala");
   const [data, setData] = useState(null);
   const [error, setError] = useState("");
   const [loading, setLoading] = useState(true);
 
   const loadDashboard = useCallback(async () => {
+    // Refresh the live dashboard from FastAPI whenever the city changes.
     setLoading(true);
     setError("");
     try {
@@ -35,9 +37,11 @@ export default function Dashboard() {
   }, [city]);
 
   useEffect(() => {
+    // Load data automatically when the page opens or loadDashboard changes.
     loadDashboard();
   }, [loadDashboard]);
 
+  // Convert backend aggregate data into the shape required by Recharts.
   const chartData = data
     ? Object.entries(data.average_prediction_by_city || {}).map(([name, value]) => ({
         city: name.charAt(0).toUpperCase() + name.slice(1),
@@ -68,7 +72,7 @@ export default function Dashboard() {
 
       {error && <div className="error-box">{error}</div>}
 
-      {/* Required dashboard cards */}
+      {/* Required dashboard cards: current weather, prediction, and advice. */}
       <section className="grid grid-3">
         <StatCard label="Current Temperature" value={data?.temperature ?? "—"} unit="°C" icon="🌡" />
         <StatCard label="Humidity" value={data?.humidity ?? "—"} unit="%" icon="💧" />
@@ -95,6 +99,7 @@ export default function Dashboard() {
         )}
       </section>
 
+      {/* Metadata section only appears after the first successful API response. */}
       {data && (
         <section className="grid grid-2" style={{ marginTop: 20 }}>
           <div className="card">
@@ -109,6 +114,7 @@ export default function Dashboard() {
         </section>
       )}
 
+      {/* Historical analytics: city averages and latest saved predictions. */}
       <section className="grid grid-2" style={{ marginTop: 20 }}>
         <div className="card chart-card">
           <h3 style={{ marginBottom: 16 }}>Average Prediction by City</h3>

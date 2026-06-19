@@ -20,6 +20,7 @@ PREDICTIONS_COLUMNS = {
 
 def init_db() -> None:
     """Create or migrate the predictions table to the required schema."""
+    # Ensure the backend folder exists before SQLite creates the .db file.
     DB_PATH.parent.mkdir(parents=True, exist_ok=True)
     with get_connection() as conn:
         _ensure_predictions_schema(conn)
@@ -28,11 +29,13 @@ def init_db() -> None:
 
 def _ensure_predictions_schema(conn: sqlite3.Connection) -> None:
     """Create predictions table or migrate from legacy schema."""
+    # Check whether the predictions table already exists.
     existing = conn.execute(
         "SELECT name FROM sqlite_master WHERE type='table' AND name='predictions'"
     ).fetchone()
 
     if not existing:
+        # Fresh install: create the current schema directly.
         conn.executescript(
             """
             CREATE TABLE predictions (
@@ -49,6 +52,7 @@ def _ensure_predictions_schema(conn: sqlite3.Connection) -> None:
         )
         return
 
+    # Existing install: compare actual columns to the expected schema.
     columns = {
         row[1]
         for row in conn.execute("PRAGMA table_info(predictions)").fetchall()
@@ -56,7 +60,7 @@ def _ensure_predictions_schema(conn: sqlite3.Connection) -> None:
     if columns == PREDICTIONS_COLUMNS:
         return
 
-    # Migrate legacy table to new column names
+    # Migrate legacy table to new column names while preserving old records.
     conn.executescript(
         """
         ALTER TABLE predictions RENAME TO predictions_legacy;
@@ -74,6 +78,7 @@ def _ensure_predictions_schema(conn: sqlite3.Connection) -> None:
         """
     )
 
+    # Detect which older schema format exists before copying data.
     legacy_cols = {
         row[1]
         for row in conn.execute("PRAGMA table_info(predictions_legacy)").fetchall()
@@ -111,6 +116,7 @@ def _ensure_predictions_schema(conn: sqlite3.Connection) -> None:
 def get_connection():
     """Context manager for SQLite connections with dict-like rows."""
     conn = sqlite3.connect(DB_PATH)
+    # sqlite3.Row allows dict(row), which is convenient for JSON responses.
     conn.row_factory = sqlite3.Row
     try:
         yield conn
@@ -120,6 +126,7 @@ def get_connection():
 
 def save_predictions(city: str, records: list[dict]) -> int:
     """Insert prediction records. Returns number of rows saved."""
+    # Convert API/model dictionaries into positional SQL parameters.
     rows = [
         (
             city.lower(),
@@ -134,6 +141,7 @@ def save_predictions(city: str, records: list[dict]) -> int:
     ]
 
     with get_connection() as conn:
+        # executemany inserts many forecast hours efficiently in one transaction.
         conn.executemany(
             """
             INSERT INTO predictions (
@@ -149,6 +157,7 @@ def save_predictions(city: str, records: list[dict]) -> int:
 
 def get_prediction_history(city: str | None = None, limit: int = 100) -> list[dict]:
     """Retrieve prediction history, optionally filtered by city."""
+    # Build the WHERE clause only when the user chooses a city filter.
     query = """
         SELECT id, city, temperature, humidity, wind_speed,
                precipitation, prediction, timestamp
@@ -160,6 +169,7 @@ def get_prediction_history(city: str | None = None, limit: int = 100) -> list[di
         query += " WHERE city = ?"
         params.append(city.lower())
 
+    # Newest records are most useful in the History page.
     query += " ORDER BY timestamp DESC LIMIT ?"
     params.append(limit)
 
@@ -170,6 +180,7 @@ def get_prediction_history(city: str | None = None, limit: int = 100) -> list[di
 
 def get_latest_prediction(city: str | None = None) -> dict | None:
     """Return the most recent prediction row."""
+    # Reuse the optional city filter pattern for latest-record lookup.
     query = """
         SELECT id, city, temperature, humidity, wind_speed,
                precipitation, prediction, timestamp
@@ -190,6 +201,7 @@ def get_latest_prediction(city: str | None = None) -> dict | None:
 
 def get_dashboard_stats(city: str | None = None) -> dict:
     """Aggregate stats for analytics sections on the dashboard."""
+    # The selected city affects total/latest stats; city averages stay global.
     params: list = []
     city_filter = ""
     if city:
@@ -197,14 +209,17 @@ def get_dashboard_stats(city: str | None = None) -> dict:
         params.append(city.lower())
 
     with get_connection() as conn:
+        # Total records for the selected city, or all records if city is None.
         total = conn.execute(
             f"SELECT COUNT(*) FROM predictions{city_filter}", params
         ).fetchone()[0]
 
+        # Count all saved predictions grouped by city.
         city_counts = conn.execute(
             "SELECT city, COUNT(*) AS count FROM predictions GROUP BY city"
         ).fetchall()
 
+        # Latest rows feed the dashboard's recent-predictions table.
         latest_rows = conn.execute(
             f"""
             SELECT city, timestamp, prediction, temperature, humidity
@@ -215,6 +230,7 @@ def get_dashboard_stats(city: str | None = None) -> dict:
             params,
         ).fetchall()
 
+        # Average prediction by city feeds the dashboard bar chart.
         avg_by_city = conn.execute(
             """
             SELECT city, AVG(prediction) AS avg_prediction

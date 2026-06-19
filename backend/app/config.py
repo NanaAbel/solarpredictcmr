@@ -2,16 +2,17 @@
 
 from pathlib import Path
 
-# Project root (SolarPredict/)
+# Project root (SolarPredict/). pathlib keeps paths portable across machines.
 BASE_DIR = Path(__file__).resolve().parent.parent.parent
 
-# Trained XGBoost model files live here
+# Trained XGBoost model files live here. main.py preloads them at startup.
 MODEL_DIR = BASE_DIR / "Model"
 
-# SQLite database file path
+# SQLite database file path. database.py creates it automatically if missing.
 DB_PATH = BASE_DIR / "backend" / "solar_predict.db"
 
-# City definitions: coordinates for Open-Meteo and model file mapping
+# City definitions: coordinates for Open-Meteo and model file mapping.
+# The dictionary key is the city id sent by the frontend.
 CITIES = {
     "douala": {
         "name": "Douala",
@@ -30,6 +31,8 @@ CITIES = {
 }
 
 # Full Model II feature list — must match training notebook order
+# Full Model II feature list.
+# IMPORTANT: this order must match the training notebooks and saved XGBoost model.
 MODEL_II_FEATURES = [
     "YEAR",
     "MO",

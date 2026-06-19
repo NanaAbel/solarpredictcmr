@@ -15,6 +15,7 @@ import { api } from "../api/client";
 import RecommendationBadge from "../components/RecommendationBadge";
 
 export default function Prediction() {
+  // Form state sent to POST /api/predict.
   const [city, setCity] = useState("douala");
   const [hours, setHours] = useState(24);
   const [loading, setLoading] = useState(false);
@@ -22,6 +23,7 @@ export default function Prediction() {
   const [result, setResult] = useState(null);
 
   const runPrediction = async () => {
+    // Trigger the backend prediction pipeline and store the returned forecast.
     setLoading(true);
     setError("");
     try {
@@ -34,6 +36,7 @@ export default function Prediction() {
     }
   };
 
+  // Transform prediction rows into chart points with readable hour labels.
   const chartData =
     result?.predictions?.map((item) => ({
       time: new Date(item.datetime).toLocaleTimeString([], {
@@ -43,6 +46,7 @@ export default function Prediction() {
       prediction: item.prediction,
     })) || [];
 
+  // The first forecast hour drives the summary recommendation badge.
   const current = result?.predictions?.[0];
 
   return (
@@ -78,6 +82,7 @@ export default function Prediction() {
 
         {error && <div className="error-box">{error}</div>}
 
+        {/* Show the current microgrid advice after prediction succeeds. */}
         {current && (
           <div style={{ marginBottom: 20 }}>
             <RecommendationBadge
@@ -88,6 +93,7 @@ export default function Prediction() {
           </div>
         )}
 
+        {/* Forecast chart and table appear only after a successful response. */}
         {result && (
           <>
             <div className="card chart-card" style={{ marginBottom: 20 }}>

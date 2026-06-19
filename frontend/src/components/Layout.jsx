@@ -27,6 +27,7 @@ export default function Layout() {
         </div>
 
         <nav className="sidebar-nav">
+          {/* NavLink automatically exposes active state for styling. */}
           {navItems.map((item) => (
             <NavLink
               key={item.to}
@@ -50,6 +51,7 @@ export default function Layout() {
 
       {/* Right content area — active page renders here */}
       <main className="main-content">
+        {/* Outlet is replaced by Dashboard, Prediction, History, etc. */}
         <Outlet />
       </main>
     </div>

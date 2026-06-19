@@ -6,6 +6,7 @@ const API_BASE = import.meta.env.VITE_API_URL || "/api";
 async function request(path, options = {}) {
   let response;
   try {
+    // All frontend API calls pass through this single helper.
     response = await fetch(`${API_BASE}${path}`, {
       headers: {
         "Content-Type": "application/json",
@@ -14,12 +15,14 @@ async function request(path, options = {}) {
       ...options,
     });
   } catch {
+    // Network errors usually mean the FastAPI server is not running.
     throw new Error(
       "Cannot reach the backend. Start it first: cd backend && python -m uvicorn app.main:app --reload --port 8000"
     );
   }
 
   if (!response.ok) {
+    // FastAPI errors can be strings or validation arrays; normalize both.
     const error = await response.json().catch(() => ({ detail: response.statusText }));
     const detail = error.detail;
     let message =
@@ -30,6 +33,7 @@ async function request(path, options = {}) {
           : response.statusText;
 
     if (response.status >= 500 && message === "Internal Server Error") {
+      // Replace generic server errors with an action-oriented message.
       message =
         "Backend unavailable. Make sure FastAPI is running on port 8000, then refresh this page.";
     }
@@ -41,6 +45,7 @@ async function request(path, options = {}) {
 }
 
 export const api = {
+  // Simple API health and city metadata.
   health: () => request("/health"),
   cities: () => request("/cities"),
 

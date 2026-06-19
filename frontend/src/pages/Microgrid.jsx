@@ -17,6 +17,7 @@ import RecommendationBadge from "../components/RecommendationBadge";
 import StatCard from "../components/StatCard";
 
 export default function Microgrid() {
+  // Inputs used to simulate battery/grid behavior.
   const [city, setCity] = useState("douala");
   const [batteryCapacity, setBatteryCapacity] = useState(20);
   const [dailyLoad, setDailyLoad] = useState(35);
@@ -26,6 +27,7 @@ export default function Microgrid() {
   const [result, setResult] = useState(null);
 
   const optimize = async () => {
+    // Send the form values to FastAPI for prediction + microgrid simulation.
     setLoading(true);
     setError("");
     try {
@@ -45,6 +47,7 @@ export default function Microgrid() {
     }
   };
 
+  // Convert the hourly schedule into bar-chart series.
   const chartData =
     result?.schedule?.map((item) => ({
       hour: new Date(item.datetime).toLocaleTimeString([], { hour: "2-digit" }),
@@ -89,8 +92,10 @@ export default function Microgrid() {
 
         {error && <div className="error-box">{error}</div>}
 
+        {/* Optimization results are shown only after a successful response. */}
         {result && (
           <>
+            {/* Current recommendation uses the first/current forecast hour. */}
             <RecommendationBadge
               status={result.current_microgrid_status}
               recommendation={result.current_microgrid_recommendation}
@@ -103,6 +108,7 @@ export default function Microgrid() {
               }
             />
 
+            {/* Summary cards show the most important energy totals. */}
             <section className="grid grid-4" style={{ margin: "20px 0" }}>
               <StatCard label="Predicted Solar" value={result.predicted_solar_kwh} unit=" kWh" />
               <StatCard label="Grid Import" value={result.grid_import_kwh} unit=" kWh" />
@@ -110,6 +116,7 @@ export default function Microgrid() {
               <StatCard label="Self-Sufficiency" value={result.self_sufficiency_pct} unit="%" />
             </section>
 
+            {/* Bar chart compares solar generation, load, import, and export. */}
             <div className="card chart-card">
               <h3 style={{ marginBottom: 16 }}>Hourly Energy Balance</h3>
               <ResponsiveContainer width="100%" height={320}>

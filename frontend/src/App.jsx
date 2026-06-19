@@ -15,7 +15,9 @@ export default function App() {
     <Routes>
       {/* Layout provides sidebar navigation; child routes render in <Outlet /> */}
       <Route element={<Layout />}>
+        {/* index means the dashboard is shown at the root URL: /. */}
         <Route index element={<Dashboard />} />
+        {/* Each path maps one sidebar link to its page component. */}
         <Route path="prediction" element={<Prediction />} />
         <Route path="history" element={<History />} />
         <Route path="microgrid" element={<Microgrid />} />

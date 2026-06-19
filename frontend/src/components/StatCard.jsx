@@ -2,6 +2,7 @@
  * Reusable dashboard metric card.
  */
 export default function StatCard({ label, value, unit = "", icon, variant = "default" }) {
+  // variant lets important metrics, such as irradiance, receive accent styling.
   return (
     <div className={`card stat-card stat-card--${variant}`}>
       <div className="stat-card-header">
@@ -10,6 +11,7 @@ export default function StatCard({ label, value, unit = "", icon, variant = "def
       </div>
       <strong>
         {value}
+        {/* Only render the unit span when a unit is supplied. */}
         {unit && <span className="stat-unit">{unit}</span>}
       </strong>
     </div>

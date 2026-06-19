@@ -5,12 +5,14 @@ import { useEffect, useState } from "react";
 import { api } from "../api/client";
 
 export default function History() {
+  // Empty city means "all cities"; otherwise the backend filters by city.
   const [city, setCity] = useState("");
   const [records, setRecords] = useState([]);
   const [error, setError] = useState("");
   const [loading, setLoading] = useState(true);
 
   const loadHistory = async () => {
+    // Pull the latest stored predictions from SQLite through FastAPI.
     setLoading(true);
     setError("");
     try {
@@ -24,6 +26,7 @@ export default function History() {
   };
 
   useEffect(() => {
+    // Reload whenever the user changes the city filter.
     loadHistory();
   }, [city]);
 
@@ -52,6 +55,7 @@ export default function History() {
         {error && <div className="error-box">{error}</div>}
         {loading && <div className="empty-box">Loading history...</div>}
 
+        {/* Render the table only after loading is complete. */}
         {!loading && (
           <div className="table-wrap">
             <table>
@@ -85,6 +89,7 @@ export default function History() {
           </div>
         )}
 
+        {/* Empty state helps the user understand there is no saved data yet. */}
         {!loading && !records.length && (
           <div className="empty-box" style={{ marginTop: 12 }}>
             No prediction records found.
