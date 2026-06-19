@@ -178,5 +178,23 @@ temp/
 docs/_build/
 site/
 
+# =========================
+# Machine Learning — large / unused model files
+# (App only needs douala_xgb_model_ii.pkl & maroua_xgb_model_ii.pkl)
+# =========================
+# Random Forest models (~190 MB each — exceeds GitHub 100 MB limit)
+Model/douala_rf_model_ii.pkl
+Model/maroua_rf_model_ii.pkl
+Model/*_rf_model_*.pkl
+
+# LSTM models (not used by deployed app)
+Model/douala_lstm_model_ii.pkl
+Model/maroua_lstm_model_ii.pkl
+Model/*_lstm_model_*.pkl
+
+# Optional: older/best checkpoints (uncomment if you don't want these in Git)
+# Model/best_douala_xgb.pkl
+# Model/best_maroua_xgb.pkl
+# Model/best_*.pkl
 # Keep generated PDFs optional — uncomment to ignore:
 # docs/*.pdf
