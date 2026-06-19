@@ -8,6 +8,8 @@ Exposes REST APIs for:
   - Microgrid optimization
 """
 
+import os
+
 from fastapi import FastAPI, HTTPException
 from fastapi.middleware.cors import CORSMiddleware
 
@@ -40,10 +42,25 @@ app = FastAPI(
     version="1.0.0",
 )
 
-# Allow the local Vite frontend to call this backend during development.
+def _cors_origins() -> list[str]:
+    """Local dev origins plus optional Vercel/production URLs from env."""
+    origins = [
+        "http://localhost:5173",
+        "http://127.0.0.1:5173",
+    ]
+    vercel_url = os.getenv("VERCEL_URL")
+    if vercel_url:
+        origins.append(f"https://{vercel_url}")
+    frontend_url = os.getenv("FRONTEND_URL")
+    if frontend_url:
+        origins.append(frontend_url.rstrip("/"))
+    return origins
+
+
+# Allow local Vite dev and deployed Vercel frontend (when env vars are set).
 app.add_middleware(
     CORSMiddleware,
-    allow_origins=["http://localhost:5173", "http://127.0.0.1:5173"],
+    allow_origins=_cors_origins(),
     allow_credentials=True,
     allow_methods=["*"],
     allow_headers=["*"],
