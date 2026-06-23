@@ -38,6 +38,8 @@ class PredictionPoint(BaseModel):
     datetime: str
     # Predicted ALLSKY_SFC_SW_DWN value after rounding.
     prediction: float
+    # Open-Meteo shortwave radiation (W/m²) for visual comparison on charts.
+    reference_ghi: float = 0.0
     weather: WeatherSnapshot
     microgrid: MicrogridAdvice
 
@@ -80,19 +82,21 @@ class MicrogridRequest(BaseModel):
     panel_area_m2: float = Field(default=10.0, gt=0)
     # Efficiency is a fraction, so values above 1 are rejected.
     panel_efficiency: float = Field(default=0.18, gt=0, le=1)
-    # Keep optimization schedules short enough to display clearly.
-    hours: int = Field(default=24, ge=1, le=48)
+    # Keep optimization schedules short enough to display clearly (weekly reports use 168 h).
+    hours: int = Field(default=24, ge=1, le=168)
 
 
 class MicrogridHour(BaseModel):
     """One hour in the microgrid optimization schedule."""
-    # This detailed row is rendered in the microgrid table and chart.
     hour: int
     datetime: str
     prediction: float
     solar_generation_kwh: float
     load_kwh: float
     battery_soc_kwh: float
+    battery_soc_pct: float
+    charge_kwh: float = 0.0
+    discharge_kwh: float = 0.0
     grid_import_kwh: float
     grid_export_kwh: float
     microgrid_status: str
@@ -109,6 +113,80 @@ class MicrogridResponse(BaseModel):
     grid_export_kwh: float
     battery_use_kwh: float
     self_sufficiency_pct: float
+    battery_soc_min_pct: float = 20.0
+    battery_soc_max_pct: float = 95.0
+    current_battery_soc_pct: float
     current_microgrid_status: str
     current_microgrid_recommendation: str
     schedule: list[MicrogridHour]
+
+
+class ForecastPoint(BaseModel):
+    """Single hour in a GHI forecast series."""
+    datetime: str
+    prediction: float
+
+
+class AlertResponse(BaseModel):
+    """FR-7 alert status."""
+    active: bool
+    message: str
+    severity: str
+    solar_6h_kwh_m2: float
+    battery_soc_pct: float
+    load_shedding_priority: list[str]
+
+
+class ModelMetrics(BaseModel):
+    """Operational model metrics shown on the dashboard."""
+    sample_count: int
+    mean_prediction_wm2: float
+    min_prediction_wm2: float
+    max_prediction_wm2: float
+    std_prediction_wm2: float
+    model_name: str
+    note: str
+
+
+class SeasonBucket(BaseModel):
+    label: str
+    avg_prediction_wm2: float
+    sample_count: int
+
+
+class SeasonalComparison(BaseModel):
+    city: str
+    dry_season: SeasonBucket
+    rainy_season: SeasonBucket
+
+
+class EnhancedDashboardResponse(BaseModel):
+    """FR-8 dashboard payload: live cards + 24 h forecast + microgrid + alerts."""
+    city: str
+    temperature: float
+    humidity: float
+    wind_speed: float
+    precipitation: float
+    prediction: float
+    timestamp: str
+    microgrid_status: str
+    microgrid_recommendation: str
+    microgrid_level: str
+    total_predictions: int
+    predictions_by_city: dict[str, int]
+    latest_predictions: list[dict]
+    average_prediction_by_city: dict[str, float]
+    forecast_24h: list[ForecastPoint]
+    microgrid_schedule: list[MicrogridHour]
+    current_battery_soc_pct: float
+    alert: AlertResponse
+    model_metrics: ModelMetrics
+    seasonal_comparison: SeasonalComparison
+
+
+class SeasonalReportResponse(BaseModel):
+    """FR-9 seasonal performance report."""
+    city: str
+    summary: SeasonalComparison
+    record_count: int
+    export_hint: str

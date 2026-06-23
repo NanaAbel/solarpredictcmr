@@ -8,6 +8,7 @@ import Dashboard from "./pages/Dashboard";
 import Prediction from "./pages/Prediction";
 import History from "./pages/History";
 import Microgrid from "./pages/Microgrid";
+import Reports from "./pages/Reports";
 import About from "./pages/About";
 
 export default function App() {
@@ -21,6 +22,7 @@ export default function App() {
         <Route path="prediction" element={<Prediction />} />
         <Route path="history" element={<History />} />
         <Route path="microgrid" element={<Microgrid />} />
+        <Route path="reports" element={<Reports />} />
         <Route path="about" element={<About />} />
       </Route>
     </Routes>

@@ -1,7 +1,7 @@
 /**
  * Microgrid Optimization — simulation with irradiance-based recommendations.
  */
-import { useState } from "react";
+import { useEffect, useState } from "react";
 import {
   Bar,
   BarChart,
@@ -15,16 +15,29 @@ import {
 import { api } from "../api/client";
 import RecommendationBadge from "../components/RecommendationBadge";
 import StatCard from "../components/StatCard";
+import { loadMicrogridSettings, saveMicrogridSettings } from "../utils/microgridSettings";
 
 export default function Microgrid() {
-  // Inputs used to simulate battery/grid behavior.
+  const saved = loadMicrogridSettings();
   const [city, setCity] = useState("douala");
-  const [batteryCapacity, setBatteryCapacity] = useState(20);
-  const [dailyLoad, setDailyLoad] = useState(35);
-  const [panelArea, setPanelArea] = useState(12);
+  const [batteryCapacity, setBatteryCapacity] = useState(saved.battery_capacity_kwh);
+  const [dailyLoad, setDailyLoad] = useState(saved.daily_load_kwh);
+  const [panelArea, setPanelArea] = useState(saved.panel_area_m2);
   const [loading, setLoading] = useState(false);
   const [error, setError] = useState("");
   const [result, setResult] = useState(null);
+
+  useEffect(() => {
+    const timer = window.setTimeout(() => {
+      saveMicrogridSettings({
+        battery_capacity_kwh: Number(batteryCapacity) || 20,
+        daily_load_kwh: Number(dailyLoad) || 35,
+        panel_area_m2: Number(panelArea) || 12,
+        panel_efficiency: 0.18,
+      });
+    }, 400);
+    return () => window.clearTimeout(timer);
+  }, [batteryCapacity, dailyLoad, panelArea]);
 
   const optimize = async () => {
     // Send the form values to FastAPI for prediction + microgrid simulation.
@@ -116,6 +129,11 @@ export default function Microgrid() {
               <StatCard label="Self-Sufficiency" value={result.self_sufficiency_pct} unit="%" />
             </section>
 
+            <p style={{ color: "var(--text-muted)", marginBottom: 12 }}>
+              SoC limits: {result.battery_soc_min_pct}% min · {result.battery_soc_max_pct}% max ·
+              Current: {result.current_battery_soc_pct}%
+            </p>
+
             {/* Bar chart compares solar generation, load, import, and export. */}
             <div className="card chart-card">
               <h3 style={{ marginBottom: 16 }}>Hourly Energy Balance</h3>
@@ -140,6 +158,7 @@ export default function Microgrid() {
                   <tr>
                     <th>Hour</th>
                     <th>Prediction</th>
+                    <th>SoC (%)</th>
                     <th>Status</th>
                     <th>Recommendation</th>
                   </tr>
@@ -149,6 +168,7 @@ export default function Microgrid() {
                     <tr key={row.datetime}>
                       <td>{new Date(row.datetime).toLocaleTimeString()}</td>
                       <td>{row.prediction} W/m²</td>
+                      <td>{row.battery_soc_pct}%</td>
                       <td>{row.microgrid_status}</td>
                       <td>{row.microgrid_recommendation}</td>
                     </tr>

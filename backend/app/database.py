@@ -178,6 +178,23 @@ def get_prediction_history(city: str | None = None, limit: int = 100) -> list[di
         return [dict(row) for row in rows]
 
 
+def get_predictions_last_days(city: str, days: int = 7) -> list[dict]:
+    """Return stored predictions from the last N days, oldest first."""
+    from datetime import datetime, timedelta
+
+    cutoff = (datetime.now() - timedelta(days=days)).isoformat(timespec="seconds")
+    query = """
+        SELECT id, city, temperature, humidity, wind_speed,
+               precipitation, prediction, timestamp
+        FROM predictions
+        WHERE city = ? AND timestamp >= ?
+        ORDER BY timestamp ASC
+    """
+    with get_connection() as conn:
+        rows = conn.execute(query, (city.lower(), cutoff)).fetchall()
+        return [dict(row) for row in rows]
+
+
 def get_latest_prediction(city: str | None = None) -> dict | None:
     """Return the most recent prediction row."""
     # Reuse the optional city filter pattern for latest-record lookup.

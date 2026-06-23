@@ -59,3 +59,19 @@ MODEL_II_FEATURES = [
 
 # Target variable predicted by the model (W/m²)
 TARGET = "ALLSKY_SFC_SW_DWN"
+
+# Microgrid SoC limits (FR-6)
+BATTERY_SOC_MIN_PCT = 0.20
+BATTERY_SOC_MAX_PCT = 0.95
+BATTERY_SOC_DEFAULT_PCT = 0.50
+
+# Alert thresholds (FR-7)
+ALERT_FORECAST_HOURS = 6
+ALERT_SOLAR_THRESHOLD_KWH_M2 = 0.5  # cumulative GHI over 6 h, per m²
+ALERT_BATTERY_SOC_PCT = 40.0
+
+# Default microgrid parameters for dashboard simulation
+DEFAULT_BATTERY_CAPACITY_KWH = 20.0
+DEFAULT_DAILY_LOAD_KWH = 35.0
+DEFAULT_PANEL_AREA_M2 = 12.0
+DEFAULT_PANEL_EFFICIENCY = 0.18

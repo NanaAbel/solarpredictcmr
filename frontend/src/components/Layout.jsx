@@ -10,6 +10,7 @@ const navItems = [
   { to: "/prediction", label: "Prediction", icon: "☀" },
   { to: "/history", label: "History", icon: "⌚" },
   { to: "/microgrid", label: "Microgrid", icon: "⚡" },
+  { to: "/reports", label: "Reports", icon: "📄" },
   { to: "/about", label: "About", icon: "ℹ" },
 ];
 

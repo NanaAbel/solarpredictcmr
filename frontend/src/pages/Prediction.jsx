@@ -4,6 +4,7 @@
 import { useState } from "react";
 import {
   CartesianGrid,
+  Legend,
   Line,
   LineChart,
   ResponsiveContainer,
@@ -101,15 +102,17 @@ export default function Prediction() {
               <ResponsiveContainer width="100%" height={320}>
                 <LineChart data={chartData}>
                   <CartesianGrid strokeDasharray="3 3" stroke="rgba(255,255,255,0.08)" />
-                  <XAxis dataKey="time" stroke="#94a3b8" />
-                  <YAxis stroke="#94a3b8" />
+                  <XAxis dataKey="time" stroke="#94a3b8" minTickGap={24} />
+                  <YAxis stroke="#94a3b8" label={{ value: "W/m²", angle: -90, position: "insideLeft", fill: "#94a3b8" }} />
                   <Tooltip />
+                  <Legend />
                   <Line
                     type="monotone"
                     dataKey="prediction"
                     stroke="#f59e0b"
                     strokeWidth={3}
                     dot={false}
+                    name="XGBoost prediction"
                   />
                 </LineChart>
               </ResponsiveContainer>

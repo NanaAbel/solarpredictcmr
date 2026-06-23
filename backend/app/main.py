@@ -12,10 +12,19 @@ import os
 
 from fastapi import FastAPI, HTTPException
 from fastapi.middleware.cors import CORSMiddleware
+from fastapi.responses import PlainTextResponse, Response
 
-from .config import CITIES, MODEL_II_FEATURES
+from .config import (
+    CITIES,
+    DEFAULT_BATTERY_CAPACITY_KWH,
+    DEFAULT_DAILY_LOAD_KWH,
+    DEFAULT_PANEL_AREA_M2,
+    DEFAULT_PANEL_EFFICIENCY,
+    MODEL_II_FEATURES,
+)
 from .database import (
     get_dashboard_stats,
+    get_latest_prediction,
     get_prediction_history,
     init_db,
     save_predictions,
@@ -24,17 +33,28 @@ from .features import build_feature_dataframe
 from .microgrid import run_microgrid_optimization
 from .model_loader import get_model, predict
 from .schemas import (
+    AlertResponse,
     DashboardResponse,
+    EnhancedDashboardResponse,
+    ForecastPoint,
     MicrogridAdvice,
     MicrogridRequest,
     MicrogridResponse,
+    ModelMetrics,
     PredictionPoint,
     PredictionRequest,
     PredictionResponse,
+    SeasonalComparison,
+    SeasonalReportResponse,
+    SeasonBucket,
     WeatherSnapshot,
 )
+from .services.alert_service import evaluate_alert
+from .services.analytics_service import get_dashboard_analytics
 from .services.microgrid_recommendation import get_microgrid_recommendation
-from .weather import fetch_hourly_weather
+from .services.report_service import build_seasonal_report, build_seasonal_report_csv
+from .services.weekly_report_service import build_weekly_report, build_weekly_report_pdf
+from .weather import close_weather_client, fetch_hourly_weather
 
 app = FastAPI(
     title="Solar Energy Forecasting API",
@@ -77,6 +97,11 @@ def on_startup() -> None:
         get_model(city)
 
 
+@app.on_event("shutdown")
+async def on_shutdown() -> None:
+    await close_weather_client()
+
+
 @app.get("/")
 def root():
     """Help users who open the backend URL directly in the browser."""
@@ -108,23 +133,128 @@ def list_cities():
     ]
 
 
-@app.get("/api/dashboard", response_model=DashboardResponse)
-async def dashboard(city: str = "douala"):
+@app.get("/api/dashboard", response_model=EnhancedDashboardResponse)
+async def dashboard(
+    city: str = "douala",
+    battery_capacity_kwh: float = DEFAULT_BATTERY_CAPACITY_KWH,
+    daily_load_kwh: float = DEFAULT_DAILY_LOAD_KWH,
+    panel_area_m2: float = DEFAULT_PANEL_AREA_M2,
+    panel_efficiency: float = DEFAULT_PANEL_EFFICIENCY,
+):
     """
-    Dashboard cards: live weather, current prediction, and microgrid advice.
+    FR-8 dashboard: live cards, 24 h GHI forecast, microgrid schedule,
+    battery SoC, alert status, model metrics, and seasonal comparison.
+    """
+    city_key = city.lower()
+    if city_key not in CITIES:
+        raise HTTPException(status_code=400, detail=f"Unsupported city: {city}")
 
-    Fetches Open-Meteo data, runs XGBoost for the current hour, and returns
-    the six dashboard metrics plus aggregated history stats.
-    """
-    # Validate the city early so unsupported values produce a clear 400 error.
+    if battery_capacity_kwh <= 0 or daily_load_kwh <= 0 or panel_area_m2 <= 0:
+        raise HTTPException(status_code=400, detail="Microgrid parameters must be positive")
+    if panel_efficiency <= 0 or panel_efficiency > 1:
+        raise HTTPException(status_code=400, detail="panel_efficiency must be between 0 and 1")
+
+    try:
+        weather_records = await fetch_hourly_weather(city_key, 24)
+        feature_df = build_feature_dataframe(
+            [record["features"] for record in weather_records],
+            MODEL_II_FEATURES,
+        )
+        prediction_values = predict(city_key, feature_df)
+    except Exception as exc:
+        raise HTTPException(status_code=502, detail=str(exc)) from exc
+
+    record = weather_records[0]
+    weather = record["weather"]
+    prediction_value = round(prediction_values[0], 2)
+    advice = get_microgrid_recommendation(prediction_value)
+    stats = get_dashboard_stats(city_key)
+
+    latest = get_latest_prediction(city_key)
+    if not latest or latest["timestamp"] != record["datetime"]:
+        save_predictions(
+            city_key,
+            [
+                {
+                    "temperature": weather["temperature"],
+                    "humidity": weather["humidity"],
+                    "wind_speed": weather["wind_speed"],
+                    "precipitation": weather["precipitation"],
+                    "prediction": prediction_value,
+                    "timestamp": record["datetime"],
+                }
+            ],
+        )
+
+    microgrid_result = await run_microgrid_optimization(
+        MicrogridRequest(
+            city=city_key,
+            battery_capacity_kwh=battery_capacity_kwh,
+            daily_load_kwh=daily_load_kwh,
+            panel_area_m2=panel_area_m2,
+            panel_efficiency=panel_efficiency,
+            hours=24,
+        ),
+        weather_records=weather_records,
+        prediction_values=prediction_values,
+    )
+
+    alert_data = evaluate_alert(
+        [float(value) for value in prediction_values],
+        microgrid_result.current_battery_soc_pct,
+    )
+
+    metrics_raw, seasonal_raw = get_dashboard_analytics(city_key)
+
+    forecast_24h = [
+        ForecastPoint(datetime=row["datetime"], prediction=round(float(value), 2))
+        for row, value in zip(weather_records, prediction_values)
+    ]
+
+    return EnhancedDashboardResponse(
+        city=city_key,
+        temperature=weather["temperature"],
+        humidity=weather["humidity"],
+        wind_speed=weather["wind_speed"],
+        precipitation=weather["precipitation"],
+        prediction=prediction_value,
+        timestamp=record["datetime"],
+        microgrid_status=advice.status,
+        microgrid_recommendation=advice.recommendation,
+        microgrid_level=advice.level,
+        total_predictions=stats["total_predictions"],
+        predictions_by_city=stats["predictions_by_city"],
+        latest_predictions=stats["latest_predictions"],
+        average_prediction_by_city=stats["average_prediction_by_city"],
+        forecast_24h=forecast_24h,
+        microgrid_schedule=microgrid_result.schedule,
+        current_battery_soc_pct=microgrid_result.current_battery_soc_pct,
+        alert=AlertResponse(
+            active=alert_data.active,
+            message=alert_data.message,
+            severity=alert_data.severity,
+            solar_6h_kwh_m2=alert_data.solar_6h_kwh_m2,
+            battery_soc_pct=alert_data.battery_soc_pct,
+            load_shedding_priority=alert_data.load_shedding_priority,
+        ),
+        model_metrics=ModelMetrics(**metrics_raw),
+        seasonal_comparison=SeasonalComparison(
+            city=seasonal_raw["city"],
+            dry_season=SeasonBucket(**seasonal_raw["dry_season"]),
+            rainy_season=SeasonBucket(**seasonal_raw["rainy_season"]),
+        ),
+    )
+
+
+@app.get("/api/dashboard/basic", response_model=DashboardResponse)
+async def dashboard_basic(city: str = "douala"):
+    """Legacy lightweight dashboard (revert-friendly)."""
     city_key = city.lower()
     if city_key not in CITIES:
         raise HTTPException(status_code=400, detail=f"Unsupported city: {city}")
 
     try:
-        # One-hour forecast is enough for the live dashboard card.
         weather_records = await fetch_hourly_weather(city_key, 1)
-        # Convert API records into the exact dataframe expected by XGBoost.
         feature_df = build_feature_dataframe(
             [record["features"] for record in weather_records],
             MODEL_II_FEATURES,
@@ -133,26 +263,10 @@ async def dashboard(city: str = "douala"):
     except Exception as exc:
         raise HTTPException(status_code=502, detail=str(exc)) from exc
 
-    # Split the first record into display weather, advice, and saved history.
     record = weather_records[0]
     weather = record["weather"]
     advice = get_microgrid_recommendation(prediction_value)
     stats = get_dashboard_stats(city_key)
-
-    # Persist current reading so dashboard refreshes build history
-    save_predictions(
-        city_key,
-        [
-            {
-                "temperature": weather["temperature"],
-                "humidity": weather["humidity"],
-                "wind_speed": weather["wind_speed"],
-                "precipitation": weather["precipitation"],
-                "prediction": round(prediction_value, 2),
-                "timestamp": record["datetime"],
-            }
-        ],
-    )
 
     return DashboardResponse(
         city=city_key,
@@ -208,6 +322,7 @@ async def predict_solar(request: PredictionRequest):
             PredictionPoint(
                 datetime=record["datetime"],
                 prediction=rounded,
+                reference_ghi=round(float(record.get("reference_ghi", 0.0)), 2),
                 weather=weather,
                 microgrid=MicrogridAdvice(
                     status=advice.status,
@@ -271,3 +386,92 @@ async def optimize_microgrid(request: MicrogridRequest):
         return await run_microgrid_optimization(request)
     except Exception as exc:
         raise HTTPException(status_code=500, detail=str(exc)) from exc
+
+
+@app.get("/api/reports/seasonal", response_model=SeasonalReportResponse)
+def seasonal_report(city: str = "douala"):
+    """FR-9: seasonal performance report (dry vs rainy)."""
+    city_key = city.lower()
+    if city_key not in CITIES:
+        raise HTTPException(status_code=400, detail=f"Unsupported city: {city}")
+
+    payload = build_seasonal_report(city_key)
+    return SeasonalReportResponse(
+        city=payload["city"],
+        summary=SeasonalComparison(
+            city=payload["summary"]["city"],
+            dry_season=SeasonBucket(**payload["summary"]["dry_season"]),
+            rainy_season=SeasonBucket(**payload["summary"]["rainy_season"]),
+        ),
+        record_count=payload["record_count"],
+        export_hint=payload["export_hint"],
+    )
+
+
+@app.get("/api/reports/seasonal/csv")
+def seasonal_report_csv(city: str = "douala"):
+    """FR-9: downloadable CSV export of seasonal performance data."""
+    city_key = city.lower()
+    if city_key not in CITIES:
+        raise HTTPException(status_code=400, detail=f"Unsupported city: {city}")
+
+    csv_text = build_seasonal_report_csv(city_key)
+    filename = f"solarpredict_{city_key}_seasonal_report.csv"
+    return PlainTextResponse(
+        content=csv_text,
+        media_type="text/csv",
+        headers={"Content-Disposition": f'attachment; filename="{filename}"'},
+    )
+
+
+async def _weekly_report_params(
+    city: str,
+    battery_capacity_kwh: float,
+    daily_load_kwh: float,
+    panel_area_m2: float,
+    panel_efficiency: float,
+) -> dict:
+    city_key = city.lower()
+    if city_key not in CITIES:
+        raise HTTPException(status_code=400, detail=f"Unsupported city: {city}")
+    if battery_capacity_kwh <= 0 or daily_load_kwh <= 0 or panel_area_m2 <= 0:
+        raise HTTPException(status_code=400, detail="Microgrid parameters must be positive")
+    if panel_efficiency <= 0 or panel_efficiency > 1:
+        raise HTTPException(status_code=400, detail="panel_efficiency must be between 0 and 1")
+
+    try:
+        return await build_weekly_report(
+            city_key,
+            battery_capacity_kwh=battery_capacity_kwh,
+            daily_load_kwh=daily_load_kwh,
+            panel_area_m2=panel_area_m2,
+            panel_efficiency=panel_efficiency,
+        )
+    except Exception as exc:
+        raise HTTPException(status_code=502, detail=str(exc)) from exc
+
+
+@app.get("/api/reports/weekly/pdf")
+async def weekly_report_pdf(
+    city: str = "douala",
+    battery_capacity_kwh: float = DEFAULT_BATTERY_CAPACITY_KWH,
+    daily_load_kwh: float = DEFAULT_DAILY_LOAD_KWH,
+    panel_area_m2: float = DEFAULT_PANEL_AREA_M2,
+    panel_efficiency: float = DEFAULT_PANEL_EFFICIENCY,
+):
+    """Download weekly solar + microgrid report as PDF."""
+    payload = await _weekly_report_params(
+        city,
+        battery_capacity_kwh,
+        daily_load_kwh,
+        panel_area_m2,
+        panel_efficiency,
+    )
+    pdf_bytes = build_weekly_report_pdf(payload)
+    city_key = city.lower()
+    filename = f"solarpredict_{city_key}_weekly_report.pdf"
+    return Response(
+        content=pdf_bytes,
+        media_type="application/pdf",
+        headers={"Content-Disposition": f'attachment; filename="{filename}"'},
+    )

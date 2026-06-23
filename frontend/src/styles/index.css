@@ -350,6 +350,126 @@ th {
   min-height: 360px;
 }
 
+/* --- FR-7 / FR-8: alerts, battery gauge, metrics --- */
+.alert-banner {
+  border-radius: var(--radius);
+  padding: 16px 18px;
+  margin-bottom: 20px;
+  border: 1px solid var(--border);
+}
+
+.alert-banner--none {
+  background: rgba(34, 197, 94, 0.08);
+  border-color: rgba(34, 197, 94, 0.3);
+}
+
+.alert-banner--warning {
+  background: rgba(245, 158, 11, 0.1);
+  border-color: rgba(245, 158, 11, 0.35);
+}
+
+.alert-banner--critical {
+  background: rgba(239, 68, 68, 0.12);
+  border-color: rgba(239, 68, 68, 0.4);
+}
+
+.alert-banner-title {
+  font-family: "Space Grotesk", sans-serif;
+  font-weight: 600;
+  margin-bottom: 8px;
+}
+
+.alert-banner-meta {
+  display: flex;
+  gap: 16px;
+  flex-wrap: wrap;
+  margin-top: 10px;
+  color: var(--text-muted);
+  font-size: 0.9rem;
+}
+
+.alert-banner-priority {
+  margin-top: 12px;
+}
+
+.alert-banner-priority ol {
+  margin: 8px 0 0;
+  padding-left: 20px;
+  color: var(--text-muted);
+  line-height: 1.7;
+}
+
+.battery-gauge-header {
+  display: flex;
+  justify-content: space-between;
+  align-items: center;
+  margin-bottom: 14px;
+}
+
+.battery-gauge-level {
+  font-family: "Space Grotesk", sans-serif;
+  font-size: 1.5rem;
+  font-weight: 700;
+}
+
+.battery-gauge-level--normal { color: var(--success); }
+.battery-gauge-level--warning { color: var(--accent); }
+.battery-gauge-level--critical { color: var(--danger); }
+.battery-gauge-level--full { color: var(--info); }
+
+.battery-gauge-track {
+  position: relative;
+  height: 18px;
+  border-radius: 999px;
+  background: rgba(255, 255, 255, 0.08);
+  overflow: hidden;
+}
+
+.battery-gauge-fill {
+  height: 100%;
+  border-radius: 999px;
+  transition: width 0.4s ease;
+}
+
+.battery-gauge-fill--normal { background: linear-gradient(90deg, #16a34a, #22c55e); }
+.battery-gauge-fill--warning { background: linear-gradient(90deg, #d97706, #f59e0b); }
+.battery-gauge-fill--critical { background: linear-gradient(90deg, #b91c1c, #ef4444); }
+.battery-gauge-fill--full { background: linear-gradient(90deg, #0284c7, #38bdf8); }
+
+.battery-gauge-min,
+.battery-gauge-max {
+  position: absolute;
+  top: 0;
+  bottom: 0;
+  width: 2px;
+  background: rgba(255, 255, 255, 0.45);
+  z-index: 2;
+}
+
+.battery-gauge-caption {
+  margin-top: 10px;
+  font-size: 0.85rem;
+  color: var(--text-muted);
+}
+
+.metrics-list {
+  list-style: none;
+  padding: 0;
+  margin: 0;
+}
+
+.metrics-list li {
+  display: flex;
+  justify-content: space-between;
+  gap: 12px;
+  padding: 10px 0;
+  border-bottom: 1px solid var(--border);
+}
+
+.metrics-list li span {
+  color: var(--text-muted);
+}
+
 /* --- Responsive: stack sidebar and grids on smaller screens --- */
 @media (max-width: 1100px) {
   .app-shell {
